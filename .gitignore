@@ -4,3 +4,4 @@ venv
 **/__pycache__
 jwt_private.key
 jwt_public.key
+migrations/*
