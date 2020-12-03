@@ -8,6 +8,7 @@ import jwt
 from sqlalchemy.sql import func
 from uuid import uuid4
 from sqlalchemy.dialects.postgresql import UUID
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
@@ -23,6 +24,7 @@ class UserModel(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = db.Column(db.String(50))
+    avatar = db.Column(db.String(50))
     username = db.Column(db.String(50))
     password = db.Column(db.String(255))
     email = db.Column(db.String(50))
@@ -108,6 +110,13 @@ def login_user():
         }
     else:
         return {"error": "The request payload is not in JSON format"}
+
+
+@app.route('/user/upload', methods=['POST'])
+def upload_avatar():
+    if request.files:
+        image = request.files["image"]
+        image.save(os.path.join(Config.UPLOAD_DIR, image.filename))
 
 
 if __name__ == '__main__':

@@ -19,3 +19,4 @@ class Config(object):
     JWT_PUBLIC_KEY = jwt_private_key
     JWT_PRIVATE_KEY = jwt_private_key
     JWT_ALGORITHM = "RS256"
+    UPLOAD_DIR = os.getenv("UPLOAD_DIR")
