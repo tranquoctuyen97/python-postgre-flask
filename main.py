@@ -19,11 +19,6 @@ migrate = Migrate(app, db)
 is_debug_mode = Config.DEBUG == 'True' if True else False
 
 
-class EmployeeEncoder(JSONEncoder):
-    def default(self, o):
-        return o.__dict__
-
-
 class UserModel(db.Model):
     __tablename__ = "users"
 
@@ -58,7 +53,7 @@ def create_user():
 
         salt = bcrypt.gensalt()
         hashed_password = bcrypt.hashpw(password, salt)
-        new_user = UserModel(name=name, username=username, password=hashed_password, email=email)
+        new_user = UserModel(name=name, username=username, password=hashed_password.decode('utf8'), email=email)
         db.session.add(new_user)
         db.session.commit()
 
@@ -68,9 +63,10 @@ def create_user():
                 "username": new_user.username,
                 "email": new_user.email,
                 "name": new_user.name,
-                "created_at": new_user.created_at.time()
+                "created_at": str(new_user.created_at.utcnow())
             }
         }
+
     else:
         return {"error": "The request payload is not in JSON format"}
 
@@ -80,13 +76,13 @@ def login_user():
     if request.is_json:
         data = request.get_json()
         username = data["username"].lower()
-        password = data["password"].lower()
+        password = data["password"].encode('utf8')
 
-        user = UserModel.query.filter(or_(username=username, email=username)).first()
+        user = UserModel.query.filter(or_(UserModel.username == username, UserModel.email == username)).first()
         if user is None:
             return {"error": "User not found"}
 
-        hashed_password = user.password
+        hashed_password = user.password.encode('utf8')
         is_match_password = bcrypt.checkpw(password, hashed_password)
 
         if is_match_password is False:
@@ -94,8 +90,23 @@ def login_user():
 
         del user.password
 
-        token = jwt.encode(user, Config.JWT_PRIVATE_KEY, Config.JWT_ALGORITHM)
-        return {"token": token, "user": user, "message": "success"}
+        token = jwt.encode({
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "username": user.username,
+        }, Config.JWT_PRIVATE_KEY, algorithm='RS256')
+
+        return {
+            "token": token.decode("utf-8"),
+            "user": {
+                "id": str(user.id),
+                "name": user.name,
+                "username": user.username,
+                "email": user.email
+            },
+            "message": "success"
+        }
     else:
         return {"error": "The request payload is not in JSON format"}
 

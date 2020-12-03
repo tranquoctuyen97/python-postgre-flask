@@ -18,4 +18,4 @@ class Config(object):
     PORT = os.getenv('PORT')
     JWT_PUBLIC_KEY = jwt_private_key
     JWT_PRIVATE_KEY = jwt_private_key
-    JWT_ALGORITHM = 'RS256'
+    JWT_ALGORITHM = "RS256"
