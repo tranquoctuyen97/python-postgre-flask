@@ -9,6 +9,8 @@ from sqlalchemy.sql import func
 from uuid import uuid4
 from sqlalchemy.dialects.postgresql import UUID
 import os
+from functools import wraps
+import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
@@ -17,6 +19,32 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 is_debug_mode = Config.DEBUG == 'True' if True else False
+
+
+# decorator for verifying the JWT
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'authorization' in request.headers:
+            string_token = request.headers['authorization']
+            token = string_token.split('Bearer ')[1]
+        if not token:
+            return jsonify({'message': 'Token is missing !!'}), 401
+
+        try:
+            current_user = jwt.decode(token.strip(), Config.JWT_SECRET_KEY, algorithms=Config.JWT_ALGORITHM)
+            # current_user = User.query \
+            #     .filter_by(public_id=data['public_id']) \
+            #     .first()
+        except NameError:
+            return jsonify({
+                'message': 'Token is invalid !!'
+            }), 401
+        return f(current_user, *args, **kwargs)
+
+    return decorated
 
 
 class UserModel(db.Model):
@@ -96,7 +124,7 @@ def login_user():
             "name": user.name,
             "email": user.email,
             "username": user.username,
-        }, Config.JWT_PRIVATE_KEY, algorithm='RS256')
+        }, Config.JWT_SECRET_KEY, algorithm=Config.JWT_ALGORITHM)
 
         return {
             "token": token.decode("utf-8"),
@@ -112,11 +140,38 @@ def login_user():
         return {"error": "The request payload is not in JSON format"}
 
 
-@app.route('/user/upload', methods=['POST'])
-def upload_avatar():
+@app.route('/users/upload/avatar', methods=['POST'])
+@token_required
+def upload_avatar(user):
     if request.files:
+        if not os.path.exists(Config.UPLOAD_DIR):
+            os.makedirs(Config.UPLOAD_DIR)
+
         image = request.files["image"]
-        image.save(os.path.join(Config.UPLOAD_DIR, image.filename))
+        print(image.mimetype, 'ama')
+        ext = image.mimetype.split('/')[1]
+        file_name = user["id"] + "-" + str(int(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))) + f".{ext}"
+        upload_path = os.path.join(
+            Config.UPLOAD_DIR,
+            file_name
+        )
+        image.save(upload_path)
+
+        user_of_check = UserModel.query.get(user["id"])
+        old_avatar = user_of_check.avatar
+
+        user_of_check.avatar = file_name
+        db.session.commit()
+
+        if old_avatar is not None:
+            remove_file_path = os.path.join(
+                Config.UPLOAD_DIR,
+                old_avatar
+            )
+            if os.path.exists(remove_file_path):
+                os.remove(remove_file_path)
+
+        return {"message": "success"}
 
 
 if __name__ == '__main__':

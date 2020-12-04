@@ -16,7 +16,5 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
     PORT = os.getenv('PORT')
-    JWT_PUBLIC_KEY = jwt_private_key
-    JWT_PRIVATE_KEY = jwt_private_key
-    JWT_ALGORITHM = "RS256"
+    JWT_ALGORITHM = "HS256"
     UPLOAD_DIR = os.getenv("UPLOAD_DIR")

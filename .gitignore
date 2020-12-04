@@ -5,3 +5,4 @@ venv
 jwt_private.key
 jwt_public.key
 migrations/*
+uploads/*
