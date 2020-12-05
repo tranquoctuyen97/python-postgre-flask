@@ -148,7 +148,6 @@ def upload_avatar(user):
             os.makedirs(Config.UPLOAD_DIR)
 
         image = request.files["image"]
-        print(image.mimetype, 'ama')
         ext = image.mimetype.split('/')[1]
         file_name = user["id"] + "-" + str(int(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))) + f".{ext}"
         upload_path = os.path.join(
@@ -172,6 +171,24 @@ def upload_avatar(user):
                 os.remove(remove_file_path)
 
         return {"message": "success"}
+
+
+@app.route('/users', methods=['PUT'])
+@token_required
+def update_user(user):
+    if request.is_json:
+        data = request.get_json()
+        user = UserModel.query.get(user["id"])
+
+        if 'password' in data:
+            salt = bcrypt.gensalt()
+            password = data["password"].encode('utf8')
+            user.password = bcrypt.bcrypt.hashpw(password, salt)
+        if 'name' in data:
+            user.name = data["name"]
+        db.session.commit()
+
+    return {"message": "success"}
 
 
 if __name__ == '__main__':
